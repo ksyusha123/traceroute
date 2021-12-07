@@ -1,8 +1,13 @@
 import click
 from scapy.all import sr1
 from scapy.layers.inet import IP, ICMP, TCP, UDP
+from scapy.layers.inet6 import IPv6
 from ipwhois import IPWhois, IPDefinedError
 from time import perf_counter
+
+
+def is_ipv6(ip):
+    return ":" in ip
 
 
 def get_asn(ip):
@@ -28,23 +33,29 @@ def traceroute(timeout, port, max_requests_number, verbose, ip, protocol):
         transport_layer_pkt_part = ICMP()
     current_ttl = 1
     while current_ttl <= max_requests_number:
-        pkt = IP(dst=ip, ttl=current_ttl) / transport_layer_pkt_part
-        start = perf_counter()
-        reply = sr1(pkt, verbose=0, timeout=timeout)
-        total_time = round(perf_counter() - start, 2)
-        output = f"{current_ttl} "
-        if not reply:
-            output += "*"
-        else:
-            current_ip = reply.src
-            output += f"{current_ip} {total_time}"
-            if verbose:
-                output += f" {get_asn(current_ip)}"
+        try:
+            if is_ipv6(ip):
+                pkt = IPv6(dst=ip, ttl=current_ttl) / transport_layer_pkt_part
+            else:
+                pkt = IP(dst=ip, ttl=current_ttl) / transport_layer_pkt_part
+            start = perf_counter()
+            reply = sr1(pkt, verbose=0, timeout=timeout)
+            total_time = round(perf_counter() - start, 2)
+            output = f"{current_ttl} "
+            if not reply:
+                output += "*"
+            else:
+                current_ip = reply.src
+                output += f"{current_ip} {total_time}"
+                if verbose:
+                    output += f" {get_asn(current_ip)}"
+                if current_ip == ip:
+                    print(output)
+                    break
             current_ttl += 1
-            if current_ip == ip:
-                print(output)
-                break
-        print(output)
+            print(output)
+        except KeyboardInterrupt:
+            break
 
 
 if __name__ == '__main__':
