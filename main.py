@@ -1,7 +1,7 @@
 import click
 from scapy.all import sr1
 from scapy.layers.inet import IP, ICMP, TCP, UDP
-from scapy.layers.inet6 import IPv6
+from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 from ipwhois import IPWhois, IPDefinedError
 from time import perf_counter
 
@@ -30,7 +30,10 @@ def traceroute(timeout, port, max_requests_number, verbose, ip, protocol):
     elif protocol == "udp":
         transport_layer_pkt_part = UDP(dport=port)
     else:
-        transport_layer_pkt_part = ICMP()
+        if is_ipv6(ip):
+            transport_layer_pkt_part = ICMPv6EchoRequest()
+        else:
+            transport_layer_pkt_part = ICMP()
     current_ttl = 1
     while current_ttl <= max_requests_number:
         try:
